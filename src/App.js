@@ -5,13 +5,16 @@ import './App.css';
 
 const db = new PouchDB('blocked');
 
-const BlockedSites = ({blockedSites}) => {
+const BlockedSites = ({blockedSites, onUnBlock}) => {
+
   const sites = blockedSites.map((site) =>
     <div key={site._id}>
       <span>{site.url}</span>
       <span>{site.redUrl}</span>
+      <span onClick={(e) => onUnBlock(site)}>X</span>
     </div>
-  )
+  );
+
   return (
     <div>{sites}</div>
   )
@@ -27,10 +30,23 @@ class App extends Component {
 
     this.blockSite = this.blockSite.bind(this);
     this.setSitePattern = this.setSitePattern.bind(this);
+    this.unblockSite = this.unblockSite.bind(this);
   }
 
   setSitePattern(event) {
-    this.setState({ sitePattern: event.target.value});
+    this.setState({ sitePattern: event.target.value });
+  }
+
+  unblockSite(site) {
+    db.get(site._id)
+      .then((doc) => db.remove(doc))
+      .then((result) => {
+        this.setState((prevState, props) => ({
+          blockedSites: prevState.blockedSites.filter(x => x._id !== site._id)
+        }));
+      }).catch((err) => {
+        console.log(err);
+      });
   }
 
   blockSite() {
@@ -42,7 +58,8 @@ class App extends Component {
     };
     db.put(doc).then(res => {
       this.setState((prevState, props) => ({
-        blockedSites: [doc, ...prevState.blockedSites]
+        blockedSites: [doc, ...prevState.blockedSites],
+        sitePattern: ''
       }))
     });
   }
@@ -73,7 +90,7 @@ class App extends Component {
             placeholder="Site to block"/>
           <button onClick={this.blockSite}>Block</button>
         </div>
-        <BlockedSites blockedSites={this.state.blockedSites} />
+        <BlockedSites blockedSites={this.state.blockedSites} onUnBlock={this.unblockSite} />
       </div>
     );
   }
