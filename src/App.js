@@ -1,13 +1,15 @@
+import PouchDB from 'pouchdb';
 import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
+const db = new PouchDB('blocked');
 
-const BlockedSiteList = ({blockedSites}) => {
-  const sites = blockedSites.map((site, index) =>
-    <div key={index}>
+const BlockedSites = ({blockedSites}) => {
+  const sites = blockedSites.map((site) =>
+    <div key={site._id}>
       <span>{site.url}</span>
-      <span>{site.redirectUrl}</span>
+      <span>{site.redUrl}</span>
     </div>
   )
   return (
@@ -19,15 +21,42 @@ class App extends Component {
   constructor() {
     super();
     this.state = {
-      blockedSites: [
-        { url: 'http://prothom-alo.com' },
-        { url: 'http://bdnews24.com' },
-      ]
+      blockedSites: [],
+      sitePattern: ''
     };
+
+    this.blockSite = this.blockSite.bind(this);
+    this.setSitePattern = this.setSitePattern.bind(this);
   }
 
-  componendDidMount() {
-  
+  setSitePattern(event) {
+    this.setState({ sitePattern: event.target.value});
+  }
+
+  blockSite() {
+    let pattern = this.state.sitePattern;
+    let doc = {
+      _id: pattern,
+      url: pattern,
+      redUrl: ''
+    };
+    db.put(doc).then(res => {
+      this.setState((prevState, props) => ({
+        blockedSites: [doc, ...prevState.blockedSites]
+      }))
+    });
+  }
+
+  componentDidMount() {
+    db.allDocs({ include_docs: true }).then((res) => {
+      this.setState({
+        blockedSites: res.rows.map(row => ({
+          _id: row.id,
+          url: row.doc.url,
+          redUrl: row.doc.redUrl
+        }))
+      });
+    });
   }
 
   render() {
@@ -37,7 +66,14 @@ class App extends Component {
           <img src={logo} className="App-logo" alt="logo" />
           <h1 className="App-title">The Blocker</h1>
         </header>
-        <BlockedSiteList blockedSites={this.state.blockedSites} />
+        <div>
+          <input type="text"
+            onChange={this.setSitePattern}
+            value={this.state.sitePattern}
+            placeholder="Site to block"/>
+          <button onClick={this.blockSite}>Block</button>
+        </div>
+        <BlockedSites blockedSites={this.state.blockedSites} />
       </div>
     );
   }
